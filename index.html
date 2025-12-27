@@ -88,16 +88,6 @@
       <button id="exportBtn" class="btn chip" aria-label="Export progress">Exporter</button>
       <button id="importBtn" class="btn chip" aria-label="Import progress">Importer</button>
       <input id="importFile" type="file" accept="application/json" style="display:none" aria-label="Import file input">
-      
-      <!-- ====== DÉBUT SECTION NOTIFICATION ====== -->
-      <button id="notifToggleBtn" class="btn chip" onclick="toggleNotifications()">Notifs OFF</button>
-      <!-- Ce conteneur sera affiché/masqué par JS -->
-      <div id="notifTimeContainer" style="display: none; align-items: center; gap: 8px;"> 
-        <label id="notifLabel" for="notifTime" style="font-size: 0.9rem; color: var(--muted); font-weight: 600;">Heure:</label>
-        <input type="time" id="notifTime" class="btn" style="padding: 4px 6px; background: var(--btn-bg); border: 1px solid var(--border); color: var(--text); cursor: text; line-height: 1.4;">
-      </div>
-      <!-- ====== FIN SECTION NOTIFICATION ====== -->
-
     </div>
     <div id="subline" class="muted">Click a portion to open the chapter on wol.jw.org</div>
     <div class="globalProgress">
@@ -195,7 +185,6 @@
 // ====== CONFIG / DATA ======
 // Timing constants
 const SCROLL_SAVE_DELAY = 150; // milliseconds
-const NOTIF_CHECK_INTERVAL = 30000; // 30 seconds
 const PORTION_DURATION_MINUTES = 7; // average reading time per portion
 
 const WOL_FR = "https://wol.jw.org/fr/wol/b/r30/lp-f/nwtsty/";
@@ -214,11 +203,9 @@ const LONG_SPLITS = {"Genèse 24":2,"Genèse 41":2,"Nombres 7":2,"Néhémie 7":2
 
 const UI = {
   fr:{ title:"NWT Bible Planning", sub:"Cliquer sur une portion ouvre le chapitre correspondant sur wol.jw.org", secOT:"ÉCRITURES HÉBRAÏQUES ET ARAMÉENNES", secNT:"ÉCRITURES GRECQUES CHRÉTIENNES", back:"⬅ Retour aux livres", prev:"← Livre précédent", next:"Livre suivant →", clear:"Effacer cochés (livre)", about:"À propos", aboutOk:"OK", aboutTitle:"À propos", export:"Exporter", import:"Importer", cancel:"Annuler", aboutList1:"Plan structuré avec portions équilibrées, jour après jour.", aboutList2:"Portions d'environ 7 minutes.", aboutList3:"Suivi automatique de ta progression, par livre et global.", aboutList4:"Bilingue français/anglais avec abréviations officielles.", aboutList5:"Mode clair ou sombre selon ton style.", aboutList6:"Liens directs vers jw.org pour chaque lecture.",
-       notifOn: "Notifs ON", notifOff: "Notifs OFF", notifLabel: "Heure:", notifTitle: "NWT Bible Planning", notifBody: "C'est l'heure de votre lecture biblique quotidienne !", notifBlocked: "Les notifications sont bloquées. Veuillez les autoriser dans les paramètres de votre navigateur.",
        statistics: "📊 Statistiques", currentStreak: "Série actuelle", estimatedTimeLeft: "Temps restant estimé", booksCompleted: "Livres complétés", lastRead: "Dernière lecture", days: "jours", hours: "heures", never: "Jamais"
      },
   en:{ title:"NWT Bible Planning", sub:"Click a portion to open the chapter on wol.jw.org", secOT:"HEBREW AND ARAMAIC SCRIPTURES", secNT:"CHRISTIAN GREEK SCRIPTURES", back:"⬅ Back to books", prev:"← Previous book", next:"Next book →", clear:"Clear checks (book)", about:"About", aboutOk:"OK", aboutTitle:"About", export:"Export", import:"Import", cancel:"Cancel", aboutList1:"Structured plan with balanced portions, day by day.", aboutList2:"Portions of about 7 minutes.", aboutList3:"Automatic progress tracking — per book and overall.", aboutList4:"Bilingual French/English with official-style abbreviations.", aboutList5:"Light or dark mode to match your style.", aboutList6:"Direct links to jw.org for each reading.",
-       notifOn: "Notifs ON", notifOff: "Notifs OFF", notifLabel: "Time:", notifTitle: "NWT Bible Planning", notifBody: "It's time for your daily Bible reading!", notifBlocked: "Notifications are blocked. Please allow them in your browser settings.",
        statistics: "📊 Statistics", currentStreak: "Current Streak", estimatedTimeLeft: "Estimated Time Left", booksCompleted: "Books Completed", lastRead: "Last Read", days: "days", hours: "hours", never: "Never"
      }
 };
@@ -262,10 +249,6 @@ let LAST_IDX = {};
 let LAST_BOOK_CHECKED = null;
 let LANG = "en";
 let THEME = "dark";
-// Variables pour les notifications
-let NOTIF_ENABLED = false;
-let NOTIF_TIME = "08:00"; // Heure par défaut
-let LAST_NOTIF_DATE = null; // Pour n'envoyer qu'une notif par jour
 
 function save(){
   try {
@@ -277,11 +260,7 @@ function save(){
       lastIdx:LAST_IDX, 
       lastBookChecked:LAST_BOOK_CHECKED, 
       lang:LANG, 
-      theme:THEME,
-      // Sauvegarde des nouveaux paramètres de notification
-      notifEnabled: NOTIF_ENABLED,
-      notifTime: NOTIF_TIME,
-      lastNotifDate: LAST_NOTIF_DATE
+      theme:THEME
     }));
   } catch(e) {
     console.error('Save error:', e);
@@ -301,12 +280,6 @@ function load(){
     // Load saved language and theme, otherwise keep defaults.
     LANG = d.lang||LANG;
     THEME = d.theme||THEME;
-    // Chargement des nouveaux paramètres de notification
-    NOTIF_ENABLED = d.notifEnabled || false;
-    NOTIF_TIME = d.notifTime || "08:00";
-    LAST_NOTIF_DATE = d.lastNotifDate || null;
-    // Mettre à jour l'affichage de l'heure
-    document.getElementById("notifTime").value = NOTIF_TIME;
   }catch(e){ console.warn(e); }
 }
 
@@ -539,8 +512,6 @@ function applyLang(){
   document.getElementById("importBtn").textContent = t.import;
   // MODIFICATION: Update language button to show current state
   document.getElementById("langToggle").textContent = (LANG === "fr" ? "FR" : "EN");
-  // MISE À JOUR : Mettre à jour le texte du bouton de notification et le label
-  updateNotifButtonText();
   // Update statistics button text and labels
   document.getElementById("statsToggle").textContent = t.statistics;
   document.getElementById("statStreakLabel").textContent = t.currentStreak;
@@ -574,7 +545,7 @@ function openAbout(){
          <li>Liens directs vers jw.org pour chaque lecture.</li>
        </ul>
        <p>Un outil personnel pensé pour rendre ta lecture biblique plus fluide et inspirante.<br>
-       Créée par <strong>Marc</strong> avec <strong>ChatGPT</strong>, <strong>Gemini</strong> et <strong>WebIntoApp</strong>.<br>
+       Créée par <strong>Marc</strong> avec <strong>ChatGPT</strong>, <strong>Google Gemini</strong>, <strong>WebIntoApp</strong>, <strong>Visual Studio Code</strong> et <strong>PWABuilder</strong>.<br>
        📧 Contact&nbsp;: <a href="mailto:sammrevenn@gmail.com" style="color:#7bbdff">sammrevenn@gmail.com</a></p>`
     : `<p><strong>NWT Bible Planning</strong><br>Discover a simple, motivating way to read through the entire Bible!</p>
        <ul>
@@ -586,7 +557,7 @@ function openAbout(){
          <li>Direct links to jw.org for each reading.</li>
        </ul>
        <p>A personal tool designed to make your daily reading smoother and more inspiring.<br>
-       Created by <strong>Marc</strong> with <strong>ChatGPT</strong>, <strong>Gemini</strong> et <strong>WebIntoApp</strong>.<br>
+       Created by <strong>Marc</strong> with <strong>ChatGPT</strong>, <strong>Google Gemini</strong>, <strong>WebIntoApp</strong>, <strong>Visual Studio Code</strong> and <strong>PWABuilder</strong>.<br>
        📧 Contact: <a href="mailto:sammrevenn@gmail.com" style="color:#7bbdff">sammrevenn@gmail.com</a></p>`
   );
   aboutOk.textContent = t.aboutOk;
@@ -611,11 +582,7 @@ function getStateObj() {
     lastBookChecked: LAST_BOOK_CHECKED,
     lang: LANG,
     theme: THEME,
-    active: ACTIVE_BOOK,
-    // Ajout des données de notification à l'export
-    notifEnabled: NOTIF_ENABLED,
-    notifTime: NOTIF_TIME,
-    lastNotifDate: LAST_NOTIF_DATE
+    active: ACTIVE_BOOK
   };
 }
 function setStateFrom(obj, {mode="replace"} = {}) {
@@ -634,12 +601,6 @@ function setStateFrom(obj, {mode="replace"} = {}) {
   LANG = obj.lang || LANG;
   THEME = obj.theme || THEME;
   ACTIVE_BOOK = obj.active && CANON.find(x=>x[0]===obj.active) ? obj.active : null;
-
-  // Ajout des données de notification à l'import
-  NOTIF_ENABLED = obj.notifEnabled || false;
-  NOTIF_TIME = obj.notifTime || "08:00";
-  LAST_NOTIF_DATE = obj.lastNotifDate || null;
-  document.getElementById("notifTime").value = NOTIF_TIME;
 
   save(); applyTheme(); applyLang(); updateProgressGlobal();
   if (ACTIVE_BOOK) openBook(ACTIVE_BOOK); else showGrid();
@@ -729,179 +690,6 @@ function showAlertModal(message) {
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-}
-
-// ====== NOUVELLE SECTION: Notifications ======
-
-// Met à jour le texte du bouton et l'affichage du sélecteur d'heure
-function updateNotifButtonText() {
-  const t = UI[LANG];
-  const btn = document.getElementById("notifToggleBtn");
-  const container = document.getElementById("notifTimeContainer");
-  const label = document.getElementById("notifLabel");
-
-  if (NOTIF_ENABLED) {
-    btn.textContent = t.notifOn;
-    btn.classList.add("watch"); // Style "ON"
-    container.style.display = "flex"; // Afficher le sélecteur d'heure
-  } else {
-    btn.textContent = t.notifOff;
-    btn.classList.remove("watch"); // Style "OFF"
-    container.style.display = "none"; // Masquer le sélecteur d'heure
-  }
-  label.textContent = t.notifLabel;
-}
-
-// Demande la permission d'envoyer des notifications
-async function requestNotificationPermission() {
-  if (!('Notification' in window)) {
-    return false; // Notifications non supportées
-  }
-  if (Notification.permission === 'granted') {
-    return true; // Déjà autorisé
-  }
-  if (Notification.permission === 'denied') {
-    showAlertModal(UI[LANG].notifBlocked);
-    return false; // Bloqué
-  }
-  // Demander la permission
-  const permission = await Notification.requestPermission();
-  if (permission === 'granted') {
-    return true;
-  }
-  return false;
-}
-
-// Fonction globale pour le bouton de notification (appelée par onclick)
-function toggleNotifications() {
-  console.log("toggleNotifications appelée - NOTIF_ENABLED:", NOTIF_ENABLED);
-  
-  // Si on veut désactiver, pas besoin de vérifier les permissions
-  if (NOTIF_ENABLED) {
-    NOTIF_ENABLED = false;
-    save();
-    updateNotifButtonText();
-    console.log("Notifications désactivées");
-    return;
-  }
-  
-  // Si on essaie d'activer les notifications
-  if (!('Notification' in window)) {
-    showAlertModal(UI[LANG].notifBlocked || "Notifications non supportées");
-    return;
-  }
-  
-  if (Notification.permission === 'denied') {
-    showAlertModal(UI[LANG].notifBlocked || "Les notifications sont bloquées. Veuillez les autoriser dans les paramètres de votre navigateur.");
-    return;
-  }
-  
-  if (Notification.permission === 'granted') {
-    // Permission déjà accordée, on active directement
-    NOTIF_ENABLED = true;
-    save();
-    updateNotifButtonText();
-    console.log("Notifications activées (permission déjà accordée)");
-    return;
-  }
-  
-  // Permission pas encore demandée, on la demande
-  Notification.requestPermission().then(function(permission) {
-    console.log("Permission demandée, résultat:", permission);
-    if (permission === 'granted') {
-      NOTIF_ENABLED = true;
-      save();
-      updateNotifButtonText();
-      console.log("Notifications activées (permission accordée)");
-    } else {
-      showAlertModal(UI[LANG].notifBlocked || "Permission refusée");
-    }
-  }).catch(function(error) {
-    console.error("Erreur lors de la demande de permission:", error);
-    showAlertModal(UI[LANG].notifBlocked || "Erreur lors de la demande de permission");
-  });
-}
-
-// Écouteur d'événement pour le sélecteur d'heure
-document.getElementById("notifTime").addEventListener("change", (e) => {
-  NOTIF_TIME = e.target.value;
-  save();
-});
-
-// Fonction pour envoyer la notification
-function sendNotification() {
-  console.log('[NOTIF] Envoi de la notification...');
-  const t = UI[LANG];
-  const title = t.notifTitle;
-  const options = {
-    body: t.notifBody,
-    icon: './icon-192.png',
-    badge: './icon-192.png',
-    tag: 'bible-reading-reminder',
-    requireInteraction: false,
-    vibrate: [200, 100, 200]
-  };
-  
-  // Utilise le Service Worker s'il est disponible (meilleur pour les PWA)
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    console.log('[NOTIF] Envoi via Service Worker');
-    navigator.serviceWorker.controller.postMessage({ type: 'show-notification', title, options });
-  } else if ('Notification' in window && Notification.permission === 'granted') {
-    console.log('[NOTIF] Envoi via Notification API');
-    new Notification(title, options);
-  } else {
-    console.error('[NOTIF] Impossible d\'envoyer la notification');
-  }
-}
-
-// Vérifie s'il est temps d'envoyer une notification
-function checkNotification() {
-  if (!NOTIF_ENABLED) {
-    console.log('[NOTIF] Notifications désactivées');
-    return;
-  }
-  
-  if (Notification.permission !== 'granted') {
-    console.log('[NOTIF] Permission non accordée:', Notification.permission);
-    return;
-  }
-
-  const now = new Date();
-  const today = now.toISOString().split('T')[0]; // Date au format YYYY-MM-DD
-  const currentHours = now.getHours();
-  const currentMinutes = now.getMinutes();
-  
-  console.log(`[NOTIF] Vérification: ${currentHours}:${currentMinutes}, Heure cible: ${NOTIF_TIME}, Dernière notif: ${LAST_NOTIF_DATE}`);
-  
-  // Si une notif a déjà été envoyée aujourd'hui, ne rien faire
-  if (LAST_NOTIF_DATE === today) {
-    console.log('[NOTIF] Notification déjà envoyée aujourd\'hui');
-    return;
-  }
-
-  const [targetHours, targetMinutes] = NOTIF_TIME.split(':').map(Number);
-  
-  // Vérifie si c'est l'heure (avec une marge de 1 minute)
-  if (currentHours === targetHours && currentMinutes === targetMinutes) {
-    console.log('[NOTIF] C\'est l\'heure ! Envoi de la notification...');
-    sendNotification();
-    LAST_NOTIF_DATE = today;
-    save();
-  }
-}
-
-// Démarre un minuteur pour vérifier l'heure
-function startNotificationTimer() {
-  console.log('[NOTIF] Démarrage du timer de notifications');
-  console.log('[NOTIF] Notifications activées:', NOTIF_ENABLED);
-  console.log('[NOTIF] Heure configurée:', NOTIF_TIME);
-  console.log('[NOTIF] Permission:', Notification.permission);
-  
-  // Vérifie immédiatement au chargement
-  checkNotification();
-  
-  // Puis vérifie toutes les 60 secondes (1 minute)
-  setInterval(checkNotification, 60000);
 }
 
 // ====== Statistics Functions ======
@@ -995,12 +783,9 @@ if ('serviceWorker' in navigator) {
 // ====== Start ======
 load();
 applyTheme();
-applyLang(); // Ceci appelle maintenant updateNotifButtonText()
+applyLang();
 updateProgressGlobal();
 if(ACTIVE_BOOK){ openBook(ACTIVE_BOOK); } else { showGrid(); }
-
-// Démarrer le vérificateur de notifications
-startNotificationTimer();
 
 // Setup statistics toggle
 document.getElementById("statsToggle").onclick = toggleStats;
