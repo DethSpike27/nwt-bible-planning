@@ -2,7 +2,8 @@
   "name": "NWT Bible Planning",
   "short_name": "Bible Plan",
   "description": "Plan de lecture biblique structuré avec suivi de progression",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0f1220",
   "theme_color": "#b39df3",
@@ -20,9 +21,6 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "permissions": [
-    "notifications"
   ],
   "categories": ["education", "lifestyle"],
   "lang": "fr",
