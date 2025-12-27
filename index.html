@@ -90,7 +90,7 @@
       <input id="importFile" type="file" accept="application/json" style="display:none" aria-label="Import file input">
       
       <!-- ====== DÉBUT SECTION NOTIFICATION ====== -->
-      <button id="notifToggleBtn" class="btn chip">Notifs OFF</button>
+      <button id="notifToggleBtn" class="btn chip" onclick="toggleNotifications()">Notifs OFF</button>
       <!-- Ce conteneur sera affiché/masqué par JS -->
       <div id="notifTimeContainer" style="display: none; align-items: center; gap: 8px;"> 
         <label id="notifLabel" for="notifTime" style="font-size: 0.9rem; color: var(--muted); font-weight: 600;">Heure:</label>
@@ -772,27 +772,43 @@ async function requestNotificationPermission() {
   return false;
 }
 
-// Écouteur d'événement pour le bouton ON/OFF
-document.getElementById("notifToggleBtn").addEventListener("click", async (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+// Fonction globale pour le bouton de notification (appelée par onclick)
+function toggleNotifications() {
+  console.log("toggleNotifications appelée - NOTIF_ENABLED:", NOTIF_ENABLED);
   
   if (!NOTIF_ENABLED) {
     // Si on essaie de l'activer
-    const permissionGranted = await requestNotificationPermission();
-    if (!permissionGranted) {
-      NOTIF_ENABLED = false; // Forcer à OFF si la permission est refusée
-      save();
-      updateNotifButtonText();
-      return; // Ne pas continuer
+    if (!('Notification' in window)) {
+      showAlertModal(UI[LANG].notifBlocked || "Notifications non supportées");
+      return;
+    }
+    
+    if (Notification.permission === 'denied') {
+      showAlertModal(UI[LANG].notifBlocked || "Les notifications sont bloquées");
+      return;
+    }
+    
+    if (Notification.permission !== 'granted') {
+      Notification.requestPermission().then(function(permission) {
+        console.log("Permission:", permission);
+        if (permission === 'granted') {
+          NOTIF_ENABLED = true;
+          save();
+          updateNotifButtonText();
+        } else {
+          showAlertModal(UI[LANG].notifBlocked || "Permission refusée");
+        }
+      });
+      return;
     }
   }
-
+  
   // Si la permission est accordée (ou si on désactive)
-  NOTIF_ENABLED = !NOTIF_ENABLED; // Inverse l'état
+  NOTIF_ENABLED = !NOTIF_ENABLED;
   save();
   updateNotifButtonText();
-});
+  console.log("Nouveau statut NOTIF_ENABLED:", NOTIF_ENABLED);
+}
 
 // Écouteur d'événement pour le sélecteur d'heure
 document.getElementById("notifTime").addEventListener("change", (e) => {
