@@ -776,38 +776,50 @@ async function requestNotificationPermission() {
 function toggleNotifications() {
   console.log("toggleNotifications appelée - NOTIF_ENABLED:", NOTIF_ENABLED);
   
-  if (!NOTIF_ENABLED) {
-    // Si on essaie de l'activer
-    if (!('Notification' in window)) {
-      showAlertModal(UI[LANG].notifBlocked || "Notifications non supportées");
-      return;
-    }
-    
-    if (Notification.permission === 'denied') {
-      showAlertModal(UI[LANG].notifBlocked || "Les notifications sont bloquées");
-      return;
-    }
-    
-    if (Notification.permission !== 'granted') {
-      Notification.requestPermission().then(function(permission) {
-        console.log("Permission:", permission);
-        if (permission === 'granted') {
-          NOTIF_ENABLED = true;
-          save();
-          updateNotifButtonText();
-        } else {
-          showAlertModal(UI[LANG].notifBlocked || "Permission refusée");
-        }
-      });
-      return;
-    }
+  // Si on veut désactiver, pas besoin de vérifier les permissions
+  if (NOTIF_ENABLED) {
+    NOTIF_ENABLED = false;
+    save();
+    updateNotifButtonText();
+    console.log("Notifications désactivées");
+    return;
   }
   
-  // Si la permission est accordée (ou si on désactive)
-  NOTIF_ENABLED = !NOTIF_ENABLED;
-  save();
-  updateNotifButtonText();
-  console.log("Nouveau statut NOTIF_ENABLED:", NOTIF_ENABLED);
+  // Si on essaie d'activer les notifications
+  if (!('Notification' in window)) {
+    showAlertModal(UI[LANG].notifBlocked || "Notifications non supportées");
+    return;
+  }
+  
+  if (Notification.permission === 'denied') {
+    showAlertModal(UI[LANG].notifBlocked || "Les notifications sont bloquées. Veuillez les autoriser dans les paramètres de votre navigateur.");
+    return;
+  }
+  
+  if (Notification.permission === 'granted') {
+    // Permission déjà accordée, on active directement
+    NOTIF_ENABLED = true;
+    save();
+    updateNotifButtonText();
+    console.log("Notifications activées (permission déjà accordée)");
+    return;
+  }
+  
+  // Permission pas encore demandée, on la demande
+  Notification.requestPermission().then(function(permission) {
+    console.log("Permission demandée, résultat:", permission);
+    if (permission === 'granted') {
+      NOTIF_ENABLED = true;
+      save();
+      updateNotifButtonText();
+      console.log("Notifications activées (permission accordée)");
+    } else {
+      showAlertModal(UI[LANG].notifBlocked || "Permission refusée");
+    }
+  }).catch(function(error) {
+    console.error("Erreur lors de la demande de permission:", error);
+    showAlertModal(UI[LANG].notifBlocked || "Erreur lors de la demande de permission");
+  });
 }
 
 // Écouteur d'événement pour le sélecteur d'heure
