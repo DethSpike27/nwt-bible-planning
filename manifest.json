@@ -1,9 +1,9 @@
 {
   "name": "NWT Bible Planning",
-  "short_name": "Bible Plan",
+  "short_name": "NWT Bible Planning",
   "description": "Plan de lecture biblique structuré avec suivi de progression",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "https://dethspike27.github.io/nwt-bible-planning/",
+  "scope": "https://dethspike27.github.io/nwt-bible-planning/",
   "display": "standalone",
   "background_color": "#0f1220",
   "theme_color": "#b39df3",
@@ -26,10 +26,11 @@
     "education",
     "lifestyle"
   ],
-  "lang": "fr",
+  "lang": "en",
   "dir": "ltr",
   "permissions": [
     "notifications"
   ],
-  "gcm_sender_id": "103953800507"
+  "gcm_sender_id": "103953800507",
+  "id": "dethspike27nwt"
 }
