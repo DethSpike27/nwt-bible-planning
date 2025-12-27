@@ -770,7 +770,10 @@ async function requestNotificationPermission() {
 }
 
 // Écouteur d'événement pour le bouton ON/OFF
-document.getElementById("notifToggleBtn").onclick = async () => {
+document.getElementById("notifToggleBtn").addEventListener("click", async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
   if (!NOTIF_ENABLED) {
     // Si on essaie de l'activer
     const permissionGranted = await requestNotificationPermission();
@@ -786,7 +789,7 @@ document.getElementById("notifToggleBtn").onclick = async () => {
   NOTIF_ENABLED = !NOTIF_ENABLED; // Inverse l'état
   save();
   updateNotifButtonText();
-};
+});
 
 // Écouteur d'événement pour le sélecteur d'heure
 document.getElementById("notifTime").addEventListener("change", (e) => {
